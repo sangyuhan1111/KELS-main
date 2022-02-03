@@ -1,0 +1,8 @@
+# ignore files
+
+*.DS_Store
+__pycache__
+dataset/
+preprocessed/
+sleep/
+models/
