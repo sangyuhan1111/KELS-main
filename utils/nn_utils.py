@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.model_selection import KFold
 import copy
 
 from torch.utils.data import Dataset,DataLoader
@@ -71,47 +72,6 @@ def batch_to_embbedings(datas,networks):
     return emb_list, attn_mask
 
 
-def make_splited_data(input_datas,label_data,is_regression=False):
-    """
-    make test and train set with minmax scaler. input_datas : list of pandas dataframe
-    return list of sequences and a label
-    
-    """
-
-    def apply_scaler(datain,scaler):
-        
-        fitted = scaler.fit(datain)
-        output = scaler.transform(datain)
-        output = pd.DataFrame(output,columns = datain.columns, index=list(datain.index.values))
-        return output
-
-    tup = train_test_split(input_datas[0],input_datas[1],input_datas[2],input_datas[3],input_datas[4],input_datas[5],label_data,train_size=0.8)
-    #input data에 따라 이쁘게 할 수 없나..
-    X_trains = []
-    X_tests = []
-    for i in range(len(input_datas)):
-        X_trains.append(tup[2*i].reset_index())
-        X_tests.append(tup[2*i+1].reset_index())
-    y_trains = [tup[-2].reset_index()]
-    y_tests = [tup[-1].reset_index()]
-    
-
-    for datas in X_trains, X_tests:
-        for i,data in enumerate(datas):
-            datas[i] = data.drop(columns=['level_0','index'])
-            min_max_scaler = MinMaxScaler()
-            datas[i] = apply_scaler(datas[i],min_max_scaler)
-
-    for datas in y_trains, y_tests:
-        for i,data in enumerate(datas):
-            datas[i] = data.drop(columns=['level_0','index'])
-            if is_regression == True:
-                min_max_scaler = MinMaxScaler()
-                datas[i] = apply_scaler(datas[i],min_max_scaler)
-
-    return X_trains, X_tests, y_trains[0], y_tests[0] # return list of sequences and a label
-
-
 
 
 def make_split_list(year_datas):
@@ -146,16 +106,14 @@ class KELSDataSet(Dataset):
     __getitem__ returns (batch, concated featres eg. 233 )
     
     """
-    def __init__(self,year_datas,label,is_regression=False):
+    def __init__(self,input,label,is_regression=False):
         
-        for i,data in enumerate(year_datas):
-            year_datas[i] = data.to_numpy()
-        self.split_list = make_split_list(year_datas) # used after getitem of dataloader.
+        
         self.is_regression = is_regression
         self.label = label.to_numpy()
-        self.seq_len = len(year_datas)
-        self.data_len = year_datas[0].shape[0]
-        self.data = np.concatenate(year_datas,axis=1)
+        self.seq_len = len(input)
+        self.data_len = input.shape[0]
+        self.data = input
 
 
     def __len__(self):
